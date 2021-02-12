@@ -44,6 +44,21 @@ def test_pipenv_py(PipenvInstance):
 
 
 @pytest.mark.cli
+@pytest.mark.skipif(
+    os.name != "nt", reason="test this only on windows as it's an pyenv-win related issue"
+)
+def test_pipenv_pyenv_win(PipenvInstance):
+    with PipenvInstance() as p:
+        py_version_test = "3.7.9"
+        c = p.pipenv(f"--python {py_version_test}")
+        assert c.ok
+        c = p.pipenv("run python --version")
+        assert c.ok
+        python = c.out.strip()
+        assert python.endwith(py_version_test)
+
+
+@pytest.mark.cli
 def test_pipenv_site_packages(PipenvInstance):
     with PipenvInstance() as p:
         c = p.pipenv('--python python --site-packages')
