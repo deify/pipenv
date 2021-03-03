@@ -101,13 +101,14 @@ class Installer(object):
                installer.
             3. In ~/.pyenv/bin or ~/.asdf/bin, depending on the installer.
         """
+        env_path = os.path.join(os.path.expanduser(os.getenv(env_var, '/dev/null')), 'bin')
         for candidate in (
             # Look for the Python installer using the equivalent of 'which'. On
             # Homebrew-installed systems, the env var may not be set, but this
             # strategy will work.
-            find_windows_executable('', name),
+            find_windows_executable(env_path, name),
             # Check for explicitly set install locations (e.g. PYENV_ROOT, ASDF_DIR).
-            os.path.join(os.path.expanduser(os.getenv(env_var, '/dev/null')), 'bin', name),
+            os.path.join(env_path, name),
             # Check the pyenv/asdf-recommended from-source install locations
             os.path.join(os.path.expanduser('~/.{}'.format(name)), 'bin', name),
         ):
@@ -117,11 +118,12 @@ class Installer(object):
 
     def _run(self, *args, **kwargs):
         timeout = kwargs.pop('timeout', delegator.TIMEOUT)
+        block = kwargs.pop('block',False)
         if kwargs:
             k = list(kwargs.keys())[0]
             raise TypeError('unexpected keyword argument {0!r}'.format(k))
         args = (self.cmd,) + tuple(args)
-        c = delegator.run(args, block=False, timeout=timeout)
+        c = delegator.run(args, block=block, timeout=timeout)
         c.block()
         if c.return_code != 0:
             raise InstallerError('failed to run {0}'.format(args), c)
@@ -169,7 +171,8 @@ class Installer(object):
 class Pyenv(Installer):
 
     def _find_installer(self):
-        return self._find_python_installer_by_name_and_env('pyenv', 'PYENV_ROOT')
+        installer = self._find_python_installer_by_name_and_env('pyenv', 'PYENV_ROOT')
+        return installer
 
     def iter_installable_versions(self):
         """Iterate through CPython versions available for Pipenv to install.
@@ -188,10 +191,17 @@ class Pyenv(Installer):
         A ValueError is raised if the given version does not have a match in
         pyenv. A InstallerError is raised if the pyenv command fails.
         """
-        c = self._run(
-            'install', '-s', str(version),
-            timeout=PIPENV_INSTALL_TIMEOUT,
-        )
+        if os.path.splitext(self.cmd)[1] == ".bat":
+            c = self._run(
+                'install', str(version),
+                timeout=PIPENV_INSTALL_TIMEOUT,
+                block=True,
+            )
+        else:
+            c = self._run(
+                'install', '-s', str(version),
+                timeout=PIPENV_INSTALL_TIMEOUT,
+            )
         return c
 
 
