@@ -470,6 +470,26 @@ def PipenvInstance(pip_src_dir, monkeypatch, pypi):
         finally:
             os.umask(original_umask)
 
+@pytest.fixture()
+def PipenvInstance_UsePyEnv(pip_src_dir, monkeypatch, pypi):
+    with temp_environ(), monkeypatch.context() as m:
+        m.setattr(shutil, "rmtree", _rmtree_func)
+        original_umask = os.umask(0o007)
+        m.setenv("PIPENV_NOSPIN", fs_str("1"))
+        m.setenv("CI", fs_str("1"))
+        m.setenv("PIPENV_DONT_USE_PYENV", fs_str("0"))
+        m.setenv("PIPENV_YES",fs_str("1"))
+        m.setenv("PIPENV_TEST_INDEX", "{0}/simple".format(pypi.url))
+        m.setenv("PIPENV_PYPI_INDEX", "simple")
+        m.setenv("ARTIFACT_PYPI_URL", pypi.url)
+        m.setenv("PIPENV_PYPI_URL", pypi.url)
+        warnings.simplefilter("ignore", category=ResourceWarning)
+        warnings.filterwarnings("ignore", category=ResourceWarning, message="unclosed.*<ssl.SSLSocket.*>")
+        try:
+            yield _PipenvInstance
+        finally:
+            os.umask(original_umask)
+
 
 @pytest.fixture()
 def PipenvInstance_NoPyPI(monkeypatch, pip_src_dir, pypi):
