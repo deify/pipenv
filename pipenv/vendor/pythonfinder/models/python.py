@@ -133,7 +133,10 @@ class PythonFinder(BaseFinder, BasePath):
         # type: (Union[Path, str]) -> Path
         if isinstance(base, six.string_types):
             base = Path(base)
-        return base / "bin"
+        if self.name == "pyenv-win":
+            return base
+        else:
+            return base / "bin"
 
     @classmethod
     def version_from_bin_dir(cls, entry):
